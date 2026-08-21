@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
+import { bearer } from "better-auth/plugins";
 
 export const auth = betterAuth({
   appName: "finances",
@@ -27,6 +28,6 @@ export const auth = betterAuth({
       maxAge: 60,
     },
   },
-  plugins: [nextCookies()],
+  plugins: [nextCookies(), bearer()],
   hooks: {},
 });

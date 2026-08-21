@@ -1,0 +1,7 @@
+POST http://pi.local:3000/api/v1/auth/signin
+Content-Type: application/json
+
+{
+  "email": "linder2015@outlook.com",
+  "password": "testtest"
+}
