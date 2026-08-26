@@ -19,6 +19,7 @@ export default function SyncAccountBalancesButton({
     setIsLoading(true);
     await getAccountBalance(userId);
     setIsLoading(false);
+    window.location.reload();
   }
 
   return (

@@ -123,6 +123,7 @@ export function SyncTransactionsButton({
     setLoading(true);
     await syncTransactions(userId);
     setLoading(false);
+    window.location.reload();
   }
 
   return (

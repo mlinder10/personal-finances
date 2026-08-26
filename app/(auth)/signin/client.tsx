@@ -9,22 +9,25 @@ import Link from "next/link";
 import { useState } from "react";
 
 export default function SigninForm() {
+  const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   async function handleSignin() {
     try {
-      const res = await fetch("/api/v1/auth/signin", {
+      setIsLoading(true);
+      await fetch("/api/v1/auth/signin", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.text();
-      console.log(data);
+      window.location.replace("/app");
     } catch (error) {
       console.error(error);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -49,12 +52,16 @@ export default function SigninForm() {
           />
         </div>
         <div className="space-y-2">
-          <Button onClick={handleSignin} className="w-full">
+          <Button
+            onClick={handleSignin}
+            className="w-full"
+            disabled={isLoading}
+          >
             Sign In
           </Button>
           <Separator />
           <Link href="/signup">
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" disabled={isLoading}>
               Sign Up
             </Button>
           </Link>
