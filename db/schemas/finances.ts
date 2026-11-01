@@ -1,5 +1,6 @@
 import { integer, sqliteTable, text, index } from "drizzle-orm/sqlite-core";
 import { user } from "./auth";
+import { sql } from "drizzle-orm";
 
 export const plaidItem = sqliteTable(
   "plaid_item",
@@ -30,6 +31,9 @@ export const bankAccount = sqliteTable(
     mask: text("mask"),
     type: text("type").notNull(),
     subtype: text("subtype"),
+    lastUpdated: text("last_updated")
+      .notNull()
+      .default(sql`(CURRENT_TIMESTAMP)`),
   },
   (table) => [
     index("bank_account_user_id_idx").on(table.userId),

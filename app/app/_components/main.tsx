@@ -1,9 +1,5 @@
 import { ReactNode } from "react";
 
-type MainProps = {
-  children?: ReactNode;
-};
-
-export default function Main({ children }: MainProps) {
-  return <main className="flex flex-col h-full">{children}</main>;
+export default function Main({ children }: { children?: ReactNode }) {
+  return <main className="min-w-0 flex-1 bg-muted/30">{children}</main>;
 }

@@ -27,7 +27,8 @@ export async function POST() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return new NextResponse("Unauthorized", { status: 401 });
 
-  await syncTransactions(session.user.id);
+  const result = await syncTransactions();
+  if (!result.success) return new NextResponse(result.error, { status: 502 });
 
   const transactions = await db
     .select({

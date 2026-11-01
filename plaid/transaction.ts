@@ -10,12 +10,18 @@ import { PlaidError } from "./types";
 import { db } from "@/db";
 import { bankAccount, transaction, plaidItem } from "@/db/schemas/finances";
 import { eq, inArray, sql } from "drizzle-orm";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 
 /**
  * Fetches real-time account balances from Plaid for all connected items of a user
  * and updates local account balances in the database.
  */
-export async function getAccountBalance(userId: string) {
+export async function getAccountBalance() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { success: false, error: "Unauthorized" } as const;
+  const userId = session.user.id;
+
   try {
     // 1. Get all connected items/accessTokens for the user
     const userItems = await db
@@ -80,7 +86,10 @@ export async function getAccountBalance(userId: string) {
   }
 }
 
-export async function syncTransactions(userId: string) {
+export async function syncTransactions() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { success: false, error: "Unauthorized" } as const;
+  const userId = session.user.id;
   let items;
   try {
     items = await db
@@ -93,24 +102,23 @@ export async function syncTransactions(userId: string) {
     return { success: false, error: "Failed to get items" } as const;
   }
 
-  await Promise.all(
-    items.map(async (item) => {
-      try {
-        await updateTransactionHistory(
-          userId,
-          item.itemId,
-          item.accessToken,
-          item.cursor,
-        );
-      } catch (e) {
-        console.error(e);
-        return {
-          success: false,
-          error: "Failed to sync transactions",
-        } as const;
-      }
-    }),
+  const results = await Promise.all(
+    items.map((item) =>
+      syncTransactionsWithCredentials({
+        userId,
+        itemId: item.itemId,
+        accessToken: item.accessToken,
+        initialCursor: item.cursor,
+      }),
+    ),
   );
+
+  if (results.some((result) => !result.success)) {
+    return {
+      success: false,
+      error: "Failed to sync one or more accounts",
+    } as const;
+  }
 
   return { success: true } as const;
 }
@@ -118,13 +126,38 @@ export async function syncTransactions(userId: string) {
 /**
  * Performs cursor-based sync for transactions given an access token and user ID.
  */
-export async function updateTransactionHistory(
-  userId: string,
-  itemId: string,
-  accessToken: string,
-  initialCursor: string | null,
-) {
-  console.log("Syncing transactions...");
+export async function syncTransactionsForItem(itemId: string) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { success: false, error: "Unauthorized" } as const;
+
+  const [item] = await db
+    .select()
+    .from(plaidItem)
+    .where(
+      sql`${plaidItem.itemId} = ${itemId} AND ${plaidItem.userId} = ${session.user.id}`,
+    )
+    .limit(1);
+  if (!item) return { success: false, error: "Account not found" } as const;
+
+  return syncTransactionsWithCredentials({
+    userId: session.user.id,
+    itemId: item.itemId,
+    accessToken: item.accessToken,
+    initialCursor: item.cursor,
+  });
+}
+
+async function syncTransactionsWithCredentials({
+  userId,
+  itemId,
+  accessToken,
+  initialCursor,
+}: {
+  userId: string;
+  itemId: string;
+  accessToken: string;
+  initialCursor: string | null;
+}) {
   let added: Transaction[] = [];
   let modified: Transaction[] = [];
   let removed: RemovedTransaction[] = [];

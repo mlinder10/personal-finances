@@ -110,27 +110,40 @@ export function AccountSelector({ accounts }: AccountSelectorProps) {
   );
 }
 
-type SyncTransactionsButtonProps = {
-  userId: string;
-};
-
-export function SyncTransactionsButton({
-  userId,
-}: SyncTransactionsButtonProps) {
+export function SyncTransactionsButton() {
+  const router = useRouter();
   const [isLoading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSync() {
     setLoading(true);
-    await syncTransactions(userId);
-    setLoading(false);
-    window.location.reload();
+    setError(null);
+    try {
+      const result = await syncTransactions();
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError("Unable to sync transactions. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <Button disabled={isLoading} onClick={handleSync}>
-      <span>{isLoading ? "Syncing..." : "Sync"}</span>
-      <RefreshCcw className={cn(isLoading && "animate-spin")} />
-    </Button>
+    <div className="space-y-1">
+      <Button disabled={isLoading} onClick={handleSync}>
+        <span>{isLoading ? "Syncing..." : "Sync"}</span>
+        <RefreshCcw className={cn(isLoading && "animate-spin")} />
+      </Button>
+      {error && (
+        <p role="alert" className="text-destructive text-xs">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -141,22 +154,38 @@ type ExportTransactionsButtonProps = {
 export function ExportTransactionsButton({
   transactions,
 }: ExportTransactionsButtonProps) {
-  function handleExport() {
-    let csv = "Name,Date,Amount\n";
-    for (const tx of transactions) {
-      csv += `${tx.name || tx.merchantName || tx.personalFinanceCategoryPrimary},${tx.date},${tx.amountInCents / 100}\n`;
-    }
+  function escapeCsv(value: string | number | null) {
+    const text = String(value ?? "");
+    const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text;
+    return `"${safeText.replaceAll('"', '""')}"`;
+  }
 
-    const blob = new Blob([csv], { type: "text/csv" });
+  function handleExport() {
+    const rows = transactions.map((tx) =>
+      [
+        tx.name ||
+          tx.merchantName ||
+          tx.personalFinanceCategoryPrimary ||
+          "Transaction",
+        tx.date,
+        tx.amountInCents / 100,
+      ]
+        .map(escapeCsv)
+        .join(","),
+    );
+    const blob = new Blob([["Name,Date,Amount", ...rows].join("\r\n")], {
+      type: "text/csv;charset=utf-8",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = "transactions.csv";
     link.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
-    <Button onClick={handleExport}>
+    <Button variant="outline" onClick={handleExport}>
       <span>Export</span>
       <Download />
     </Button>

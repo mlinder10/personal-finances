@@ -1,0 +1,1 @@
+ALTER TABLE `bank_account` ADD `last_updated` text DEFAULT (CURRENT_TIMESTAMP) NOT NULL;

@@ -21,7 +21,8 @@ export async function POST() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return new NextResponse("Unauthorized", { status: 401 });
 
-  await getAccountBalance(session.user.id);
+  const result = await getAccountBalance();
+  if (!result.success) return new NextResponse(result.error, { status: 502 });
 
   const accounts = await db
     .select()

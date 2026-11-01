@@ -8,13 +8,13 @@ export default async function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = auth.api.getSession({ headers: await headers() });
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return redirect("/signin");
 
   return (
-    <div className="flex h-full">
+    <div className="flex min-h-screen">
       <Sidenav />
-      <div className="flex-4 h-full">{children}</div>
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
 }
